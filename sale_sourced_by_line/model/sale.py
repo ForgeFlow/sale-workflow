@@ -4,48 +4,30 @@
 # © 2016 Serpent Consulting Services Pvt. Ltd.
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
-from openerp import models, api, fields
-from openerp.osv import orm
+
+from openerp import api, fields, models
 
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
-    def _prepare_order_line_procurement(self, cr, uid, order, line,
-                                        group_id=False, context=None):
-        values = super(SaleOrder, self)._prepare_order_line_procurement(
-            cr, uid, order, line, group_id=group_id, context=context)
-        if line.warehouse_id:
-            values['warehouse_id'] = line.warehouse_id.id
-        return values
-
     @api.model
     def _prepare_procurement_group_by_line(self, line):
         vals = super(SaleOrder, self)._prepare_procurement_group_by_line(line)
         # for compatibility with sale_quotation_sourcing
-        if line._get_procurement_group_key()[0] == 8:
+        if line._get_procurement_group_key()[0] == 10:
             if line.warehouse_id:
                 vals['name'] += '/' + line.warehouse_id.name
         return vals
 
-    SO_STATES = {
-        'cancel': [('readonly', True)],
-        'progress': [('readonly', True)],
-        'manual': [('readonly', True)],
-        'shipping_except': [('readonly', True)],
-        'invoice_except': [('readonly', True)],
-        'done': [('readonly', True)],
-    }
-
     warehouse_id = fields.Many2one(
         'stock.warehouse',
-        'Default Warehouse',
-        states=SO_STATES,
+        string='Default Warehouse',
         help="If no source warehouse is selected on line, "
              "this warehouse is used as default. ")
 
 
-class SaleOrderLine(orm.Model):
+class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
     warehouse_id = fields.Many2one(
@@ -57,14 +39,22 @@ class SaleOrderLine(orm.Model):
              "the sale order")
 
     @api.multi
+    def _prepare_order_line_procurement(self, group_id=False):
+        values = super(SaleOrderLine,
+                       self)._prepare_order_line_procurement(group_id=group_id)
+        if self.warehouse_id:
+            values['warehouse_id'] = self.warehouse_id.id
+        return values
+
+    @api.multi
     def _get_procurement_group_key(self):
         """ Return a key with priority to be used to regroup lines in multiple
         procurement groups
 
         """
-        priority = 8
+        priority = 10
         key = super(SaleOrderLine, self)._get_procurement_group_key()
         # Check priority
         if key[0] >= priority:
             return key
-        return (priority, self.warehouse_id.id)
+        return priority, self.warehouse_id.id
