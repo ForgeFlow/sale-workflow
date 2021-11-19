@@ -13,11 +13,7 @@ class SaleOrder(models.Model):
     def _get_compute_discount_total_domain(self):
         res = super()._get_compute_discount_total_domain()
         res.extend(
-            [
-                "order_line.is_promotion_line",
-                "order_line.currency_id",
-                "currency_id",
-            ]
+            ["order_line.is_promotion_line", "order_line.currency_id", "currency_id"]
         )
         return res
 
