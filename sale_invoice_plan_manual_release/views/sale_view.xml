@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <record model="ir.ui.view" id="view_sale_invoice_plan_tree">
+        <field name="name">view.sale.invoice.plan.tree</field>
+        <field name="model">sale.invoice.plan</field>
+        <field name="inherit_id" ref="sale_invoice_plan.view_sale_invoice_plan_tree" />
+        <field name="arch" type="xml">
+            <field name="to_invoice" position="before">
+                <field name="released" />
+            </field>
+        </field>
+    </record>
+</odoo>
