@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
-
     <record model="ir.ui.view" id="view_sale_terms_template_search">
         <field name="name">sale.terms_template.search</field>
         <field name="model">sale.terms_template</field>
@@ -51,9 +50,9 @@
         <field name="model">sale.terms_template</field>
         <field name="priority" eval="6" />
         <field name="arch" type="xml">
-            <tree>
+            <list>
                 <field name="name" string="Name" />
-            </tree>
+            </list>
         </field>
     </record>
 
@@ -64,5 +63,4 @@
         <field name="view_mode">tree,form</field>
         <field name="view_id" ref="view_sale_terms_template_tree" />
     </record>
-
 </odoo>
