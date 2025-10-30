@@ -2,6 +2,7 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
 
 from odoo import models
+from odoo.tools import float_is_zero
 
 
 class SaleOrder(models.Model):
@@ -11,23 +12,44 @@ class SaleOrder(models.Model):
         # Adjust the down payment lines to deduct only the specified amount
         # Set the qty_to_invoice on down payment lines accordingly
         self.ensure_one()
+
         remaining = amount
-        # Only consider down payment lines (and not section lines)
         dp_lines = self.order_line.filtered(
-            lambda lin: lin.is_downpayment and not lin.display_type
+            lambda line: line.is_downpayment and not line.display_type
         )
+
         for line in dp_lines:
-            line_remaining_qty = line.qty_invoiced
-            line_total = line_remaining_qty * line.price_unit
-            if remaining == 0:  # No more amount to deduct
+            if not remaining:
                 line.qty_to_invoice = 0.0
-            elif remaining >= line_total:  # Deduct full line
-                line.qty_to_invoice = -line_remaining_qty
-                remaining -= line_total
-            elif remaining < line_total:  # Deduct partial line
-                # Calculate the proportion of the line to deduct
-                # quantity to invoice = -(remaining amount / price unit)
-                # since the original invoiced qty in down payment lines is 1
-                proportion = remaining / line.price_unit
-                line.qty_to_invoice = -proportion
+                continue
+
+            # Compute total (tax-excluded) value for this line
+            res = line.tax_id.compute_all(
+                line.price_unit,
+                currency=line.order_id.currency_id,
+                quantity=line.qty_invoiced,
+                product=line.product_id,
+                partner=line.order_id.partner_shipping_id,
+            )
+            line_total_excl = res["total_excluded"]
+
+            if float_is_zero(
+                line_total_excl, precision_rounding=line.currency_id.rounding
+            ):
+                continue
+
+            if remaining >= line_total_excl:
+                line.qty_to_invoice = -line.qty_invoiced
+                remaining -= line_total_excl
+            else:
+                # Partial deduction: proportionate to remaining amount
+                proportion = remaining / line_total_excl
+                qty_to_invoice = -(line.qty_invoiced * proportion)
+                line.qty_to_invoice = qty_to_invoice
                 remaining = 0.0
+        if abs(remaining) < self.currency_id.rounding:
+            remaining = 0.0
+
+    def down_payment_final_fix(self, final):
+        # return final
+        return False
