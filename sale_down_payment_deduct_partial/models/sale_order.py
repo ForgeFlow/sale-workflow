@@ -50,6 +50,7 @@ class SaleOrder(models.Model):
         if abs(remaining) < self.currency_id.rounding:
             remaining = 0.0
 
-    def down_payment_final_fix(self, final):
-        # return final
+    def down_payment_final_rounding(self, final):
+        # Avoid down payment lines rounding
+        # because that will make incorrect tax lines
         return False
