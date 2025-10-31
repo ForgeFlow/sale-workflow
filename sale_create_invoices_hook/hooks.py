@@ -159,7 +159,7 @@ def post_load_hook():
 
         for move in moves:
             # HOOK: skip_dp_final_fix
-            if self.down_payment_final_fix(final):
+            if self.down_payment_final_rounding(final):
                 # END HOOK: skip_dp_final_fix
                 # Downpayment might have been determined by a fixed amount set by the user.
                 # This amount is tax included. This can lead to rounding issues.
