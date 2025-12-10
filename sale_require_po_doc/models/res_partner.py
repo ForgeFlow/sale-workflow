@@ -10,6 +10,7 @@ class ResPartner(models.Model):
     customer_need_po = fields.Boolean(
         string="Customer Requires PO",
         tracking=True,
+        default=lambda self: self.env.company.customer_need_po_default,
         help="A PO number will be required on the"
         " Sales Order field for Customer Reference",
     )
