@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <template
+        id="report_invoice_document_inherit_sale_sequence"
+        inherit_id="account.report_invoice_document"
+    >
+        <xpath expr="//th[@name='th_description']" position="before">
+            <th
+                t-if="(o.move_type == 'out_invoice' or o.move_type == 'out_refund') and any(l.related_so_sequence for l in o.invoice_line_ids)"
+            >
+                Line Number
+            </th>
+        </xpath>
+        <xpath expr="//td[@name='account_invoice_line_name']" position="before">
+             <td
+                t-if="(o.move_type == 'out_invoice' or o.move_type == 'out_refund') and line.related_so_sequence"
+            >
+                <span t-field="line.related_so_sequence" />
+             </td>
+        </xpath>
+    </template>
+</odoo>
