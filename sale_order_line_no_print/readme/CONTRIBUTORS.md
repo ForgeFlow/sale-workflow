@@ -1,2 +1,0 @@
-- David Vidal ([Moduon](https://www.moduon.team/))
-- Jairo Llopis ([Moduon](https://www.moduon.team/))

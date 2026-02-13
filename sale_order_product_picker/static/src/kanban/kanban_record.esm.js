@@ -9,7 +9,6 @@ import {KanbanRecord} from "@web/views/kanban/kanban_record";
 import {X2ManyField} from "@web/views/fields/x2many/x2many_field";
 import {patch} from "@web/core/utils/patch";
 import {useService} from "@web/core/utils/hooks";
-import {PickerChangeProcessor} from "../utils/picker_change_processor.esm";
 
 /**
  * Dialog used to show the images of products bigger than showed on kanban
@@ -53,15 +52,9 @@ patch(KanbanRecord.prototype, "sale_order_product_picker.KanbanRecord", {
         this._super(...arguments);
         this.dialogs = useService("dialog");
         this.disableGlobalClick = false;
-        this.orm = useService("orm");
     },
     defaultFields() {
-        const {record} = this.props;
-        var defaults = ["product_id"];
-        if (record.model.root.data && record.model.root.data.picker_price_origin) {
-            defaults = defaults.concat(["price_unit", "discount"]);
-        }
-        return defaults;
+        return ["product_id", "price_unit"];
     },
     contextPicker() {
         var ctx = {};
@@ -85,10 +78,10 @@ patch(KanbanRecord.prototype, "sale_order_product_picker.KanbanRecord", {
      * @private
      */
     async onGlobalClick(ev) {
-        var $kanban = $(ev.currentTarget).closest(".o_picker_kanban");
-        if (this.disableGlobalClick || $kanban.find("#processing_picker").length) {
+        if (this.disableGlobalClick) {
             return;
         }
+        var $kanban = $(ev.currentTarget).closest(".o_picker_kanban");
         if ($(ev.target).closest(".o_picker_quick_add").length) {
             // Quick add clicked
             this._onQuickAddClicked();
@@ -96,7 +89,7 @@ patch(KanbanRecord.prototype, "sale_order_product_picker.KanbanRecord", {
             // Duplicate line clicked
             this._onFormAddClicked();
         } else if ($(ev.target).closest(".o_picker_img_full_size").length) {
-            // Open image clicked
+            // Duplicate line clicked
             this._openImageFullResolution();
         } else if ($kanban.length) {
             // General click
@@ -113,9 +106,6 @@ patch(KanbanRecord.prototype, "sale_order_product_picker.KanbanRecord", {
      */
     async _openRecordPickerForm() {
         const {openRecord, record} = this.props;
-        if (record.data.to_process) {
-            return;
-        }
         var ctx = this.contextPicker();
         const x2mList = record.model.root.data.order_line;
         const orderLines = x2mList.records.filter(
@@ -143,31 +133,34 @@ patch(KanbanRecord.prototype, "sale_order_product_picker.KanbanRecord", {
             (line) => line.data.product_id[0] === record.data.product_id[0]
         );
         this.disableGlobalClick = true;
-        if (orderLines.length > 1) {
-            this._openMultiLineModalPicker(x2mList, orderLines);
-        } else {
-            if (!x2mList.pickerChangeProcessor) {
-                const $pickerKanban = $(this.__owl__.parent.refs.root);
-                const delay = await this.orm.call(
-                    "ir.config_parameter",
-                    "get_picker_delay"
-                );
-                x2mList.pickerChangeProcessor = new PickerChangeProcessor(
-                    delay,
-                    x2mList,
-                    $pickerKanban
-                );
-            }
+        if (!orderLines.length) {
+            // Disable global click to avoid actions while record is added
+            const lineRec = await x2mList.addNew({
+                position: "bottom",
+                context: ctx,
+            });
             record.update({
-                product_uom_qty: record.data.product_uom_qty + record.data.unit_factor,
-                to_process: true,
+                product_uom_qty:
+                    record.data.product_uom_qty + lineRec.data.product_uom_qty,
+                is_in_order: true,
             });
-            x2mList.pickerChangeProcessor.addChange({
-                id: record.__bm_handle__,
-                orderLines: orderLines,
-                pickerRecord: record,
-                ctx,
-            });
+        } else if (orderLines.length === 1) {
+            const pickedRecord = orderLines[0];
+            const last_qty = pickedRecord.data.product_uom_qty;
+            const field = pickedRecord.data.secondary_uom_id
+                ? "secondary_uom_qty"
+                : "product_uom_qty";
+            await x2mList.applyCommands("order_line", [
+                {
+                    operation: "UPDATE",
+                    record: pickedRecord,
+                    data: {[field]: pickedRecord.data[field] + 1},
+                },
+            ]);
+            const diff_qty = pickedRecord.data.product_uom_qty - last_qty;
+            record.update({product_uom_qty: record.data.product_uom_qty + diff_qty});
+        } else {
+            this._openMultiLineModalPicker(x2mList, orderLines);
         }
         this.disableGlobalClick = false;
     },
@@ -177,10 +170,7 @@ patch(KanbanRecord.prototype, "sale_order_product_picker.KanbanRecord", {
      * @private
      */
     _onFormAddClicked() {
-        const {openRecord, record} = this.props;
-        if (record.data.to_process) {
-            return;
-        }
+        const {openRecord} = this.props;
         var ctx = this.contextPicker();
         openRecord(null, ctx);
     },

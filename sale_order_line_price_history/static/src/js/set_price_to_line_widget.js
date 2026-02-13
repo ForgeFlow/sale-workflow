@@ -15,9 +15,7 @@ export class SetPriceToLineWidget extends Component {
             type: "ir.actions.act_window_close",
             infos: {
                 price_unit: this.props.record.data.price_unit,
-                ...(this.props.record.fields.discount !== undefined && {
-                    discount: this.props.record.data.discount,
-                }),
+                discount: this.props.record.data.discount,
             },
         });
     }

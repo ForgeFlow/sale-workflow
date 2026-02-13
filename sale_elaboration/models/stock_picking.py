@@ -14,7 +14,5 @@ class StockPicking(models.Model):
             )
             for line in elaboration_lines:
                 for product in line.sale_line_id.elaboration_ids.product_id:
-                    line.sale_line_id.order_id._create_elaboration_line(
-                        product, line.quantity_done
-                    )
+                    pick.sale_id._create_elaboration_line(product, line.quantity_done)
         return res

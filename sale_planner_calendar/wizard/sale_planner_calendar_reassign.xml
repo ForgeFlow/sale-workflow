@@ -57,15 +57,7 @@
                     </group>
                     <group string="Events to update" col="1">
                         <group>
-                            <group>
-                                <field name="new_user_id" />
-                            </group>
-                            <group>
-                                <field
-                                    name="new_event_categ_ids"
-                                    widget="many2many_tags"
-                                />
-                            </group>
+                            <field name="new_user_id" />
                         </group>
                         <div>
                             <button
@@ -82,9 +74,9 @@
                             />
                             <button
                                 class="oe_link ml32"
-                                name="action_assign_new_values"
+                                name="action_assign_new_salesperson"
                                 type="object"
-                                string="Assign new values to selected lines"
+                                string="Assign new commercial to selected lines"
                             />
                         </div>
                         <field name="line_ids" nolabel="1">
@@ -95,23 +87,12 @@
                             >
                                 <field name="selected" widget="boolean_toggle" />
                                 <field name="calendar_event_id" optional="show" />
-                                <field
-                                    name="event_categ_ids"
-                                    widget="many2many_tags"
-                                    options="{'color_field': 'color'}"
-                                    optional="hide"
-                                />
                                 <field name="partner_id" />
                                 <field name="event_user_id" optional="hide" />
                                 <field name="partner_user_id" optional="hide" />
                                 <field name="event_start" optional="hide" />
                                 <field name="until" optional="hide" />
                                 <field name="new_user_id" />
-                                <field
-                                    name="new_event_categ_ids"
-                                    widget="many2many_tags"
-                                    optional="hide"
-                                />
                             </tree>
                         </field>
                     </group>

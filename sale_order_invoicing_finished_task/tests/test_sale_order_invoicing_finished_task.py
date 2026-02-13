@@ -1,35 +1,25 @@
 # Copyright 2017 Tecnativa - Sergio Teruel
-# Copyright 2025 Tecnativa - Víctor Martínez
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
-from odoo import Command
 from odoo.exceptions import ValidationError
-from odoo.tests import Form, new_test_user, tagged
-from odoo.tools import mute_logger
-
-from odoo.addons.base.tests.common import BaseCommon
+from odoo.tests import TransactionCase
 
 
-@tagged("-at_install", "post_install")
-class TestInvoicefinishedTask(BaseCommon):
+class TestInvoicefinishedTask(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        if not cls.env.company.chart_template_id:
-            # Load a CoA if there's none in current company
-            coa = cls.env.ref("l10n_generic_coa.configurable_chart_template", False)
-            if not coa:
-                # Load the first available CoA
-                coa = cls.env["account.chart.template"].search(
-                    [("visible", "=", True)], limit=1
-                )
-            coa.try_loading(company=cls.env.company, install_demo=False)
         cls.hour_uom = cls.env.ref("uom.product_uom_hour")
         cls.env.user.company_id.project_time_mode_id = cls.hour_uom.id
-        cls.manager = new_test_user(
-            cls.env,
-            login="test-manager-user",
-            groups="sales_team.group_sale_manager",
+        group_manager = cls.env.ref("sales_team.group_sale_manager")
+        cls.manager = cls.env["res.users"].create(
+            {
+                "name": "Andrew Manager",
+                "login": "manager",
+                "email": "a.m@example.com",
+                "signature": "--\nAndreww",
+                "groups_id": [(6, 0, [group_manager.id])],
+            }
         )
         cls.employee = cls.env["hr.employee"].create(
             {"name": cls.manager.name, "user_id": cls.manager.id}
@@ -49,9 +39,8 @@ class TestInvoicefinishedTask(BaseCommon):
         )
         cls.uom_unit = cls.env.ref("uom.product_uom_unit")
         cls.Product = cls.env["product.product"]
-        product_vals = cls._prepare_product_vals()
-        cls.product = cls.Product.create(product_vals)
-        product_delivery_vals = product_vals
+        cls.product = cls.Product.create(cls._prepare_product_vals())
+        product_delivery_vals = cls._prepare_product_vals()
         product_delivery_vals.update(
             {
                 "name": "Product - Service - Policy delivery - Test",
@@ -71,7 +60,7 @@ class TestInvoicefinishedTask(BaseCommon):
         return {
             "name": "Test Invoiceable",
             "sequence": 5,
-            "project_ids": [Command.set(cls.project.ids)],
+            "project_ids": [(6, 0, cls.project.ids)],
             "invoiceable": invoiceable_stage,
         }
 
@@ -81,7 +70,9 @@ class TestInvoicefinishedTask(BaseCommon):
             "partner_id": cls.partner.id,
             "pricelist_id": cls.partner.property_product_pricelist.id,
             "order_line": [
-                Command.create(
+                (
+                    0,
+                    0,
                     {
                         "name": product.name,
                         "product_id": product.id,
@@ -119,21 +110,17 @@ class TestInvoicefinishedTask(BaseCommon):
             "task_id": task.id,
         }
 
-    @mute_logger("odoo.models.unlink")
     def test_invoice_status(self):
         self.sale_order.action_confirm()
         self.assertEqual(self.sale_order.invoice_status, "no")
         task = self.sale_order.order_line.task_ids
-        self.assertFalse(task.invoiceable)
         # Add a timesheet line
         timesheet = self.env["account.analytic.line"].create(
             self._prepare_timesheet_vals(task, 5.0)
         )
         # Set task in invoiceable stage
-        task_form = Form(task)
-        task_form.stage_id = self.stage_invoiceable
-        task = task_form.save()
-        self.assertTrue(task.invoiceable)
+        task.stage_id = self.stage_invoiceable.id
+        task._onchange_stage_id()
         self.assertEqual(self.sale_order.invoice_status, "to invoice")
         # delete timesheet
         timesheet.unlink()
@@ -142,15 +129,8 @@ class TestInvoicefinishedTask(BaseCommon):
         self.env["account.analytic.line"].create(
             self._prepare_timesheet_vals(task, 10.0)
         )
-        self.assertTrue(task.invoiceable)
-        self.assertEqual(self.sale_order.invoice_status, "to invoice")
-        # Click on toggle_invoiceable method (invoiceable=False)
+        # Click on toggle_invoiceable method
         task.toggle_invoiceable()
-        self.assertFalse(task.invoiceable)
-        self.assertEqual(self.sale_order.invoice_status, "no")
-        # Click on toggle_invoiceable method (invoiceable=True)
-        task.toggle_invoiceable()
-        self.assertTrue(task.invoiceable)
         self.assertEqual(self.sale_order.invoice_status, "to invoice")
         # Make the invoice
         self.sale_order._create_invoices()
@@ -166,7 +146,7 @@ class TestInvoicefinishedTask(BaseCommon):
             self.env["project.task"].create(
                 {
                     "name": "Other Task",
-                    "user_ids": [Command.link(self.manager.id)],
+                    "user_ids": [(4, self.manager.id)],
                     "project_id": self.project.id,
                     "sale_line_id": self.sale_order.order_line.id,
                 }
@@ -180,7 +160,6 @@ class TestInvoicefinishedTask(BaseCommon):
             self._prepare_timesheet_vals(task, 10.5)
         )
         task.toggle_invoiceable()
-        self.assertTrue(task.invoiceable)
         self.assertEqual(self.sale_order.order_line.qty_to_invoice, 5.0)
         self.sale_order_policy_delivery.action_confirm()
         # Add a timesheet line
@@ -188,10 +167,8 @@ class TestInvoicefinishedTask(BaseCommon):
         self.env["account.analytic.line"].create(
             self._prepare_timesheet_vals(task_delivery, 10.0)
         )
-        task_delivery_form = Form(task_delivery)
-        task_delivery_form.stage_id = self.stage_invoiceable
-        task_delivery = task_delivery_form.save()
-        self.assertTrue(task_delivery.invoiceable)
+        task_delivery.write({"stage_id": self.stage_invoiceable.id})
+        task_delivery._onchange_stage_id()
         self.assertEqual(
             self.sale_order_policy_delivery.order_line.qty_to_invoice, 10.0
         )
@@ -202,12 +179,11 @@ class TestInvoicefinishedTask(BaseCommon):
             {
                 "name": "Other Task",
                 "manager_id": self.manager.id,
-                "user_ids": [Command.link(self.manager.id)],
+                "user_ids": [(4, self.manager.id)],
                 "project_id": self.project.id,
                 "sale_line_id": self.sale_order.order_line.id,
             }
         )
-        task_form = Form(task)
-        task_form.stage_id = self.stage_invoiceable
-        task = task_form.save()
+        task.stage_id = self.stage_invoiceable
+        task._onchange_stage_id()
         self.assertTrue(task.invoiceable)

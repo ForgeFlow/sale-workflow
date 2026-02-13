@@ -22,10 +22,6 @@ class SaleOrder(models.Model):
             so.general_discount = so.partner_id.sale_discount
 
     @api.model
-    def _get_discount_field_to_replace(self):
-        return "discount"
-
-    @api.model
     def get_view(self, view_id=None, view_type="form", **options):
         """The purpose of this is to write a context on "order_line" field
         respecting other contexts on this field.
@@ -41,9 +37,7 @@ class SaleOrder(models.Model):
                 order_line_field = order_line_fields[0]
                 context = order_line_field.attrib.get("context", "{}").replace(
                     "{",
-                    "{{'default_{}': general_discount, ".format(
-                        self._get_discount_field_to_replace()
-                    ),
+                    "{'default_discount': general_discount, ",
                     1,
                 )
                 order_line_field.attrib["context"] = context
