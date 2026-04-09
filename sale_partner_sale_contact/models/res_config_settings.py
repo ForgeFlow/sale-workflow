@@ -16,14 +16,3 @@ class ResConfigSettings(models.TransientModel):
             "sale orders and invoices PDF reports."
         ),
     )
-
-    # Module installation checkboxes
-    module_sale_order_partner_company_only = fields.Boolean(
-        string="Restrict customer selection to company only in quotation and order",
-    )
-    module_account_invoice_partner_company_only = fields.Boolean(
-        string="Restrict customer selection to company only on invoice",
-    )
-    module_project_partner_company_only = fields.Boolean(
-        string="Restrict customer selection to company only in projects",
-    )
