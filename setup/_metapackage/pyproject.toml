@@ -34,6 +34,8 @@ dependencies = [
     "odoo-addon-sale_order_type==19.0.*",
     "odoo-addon-sale_partner_delay==19.0.*",
     "odoo-addon-sale_partner_incoterm==19.0.*",
+    "odoo-addon-sale_partner_sale_contact==19.0.*",
+    "odoo-addon-sale_partner_sale_contact_on_project==19.0.*",
     "odoo-addon-sale_require_po_doc==19.0.*",
     "odoo-addon-sale_stock_delivery_address==19.0.*",
     "odoo-addon-sale_stock_picking_blocking==19.0.*",
