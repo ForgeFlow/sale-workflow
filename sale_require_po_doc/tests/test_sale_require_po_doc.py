@@ -31,6 +31,7 @@ class TestSaleRequirePODoc(BaseCommon):
                 ],
             }
         )
+        cls.company = cls.env.company
 
     def test_require_customer_need_po(self):
         self.partner.customer_need_po = True
@@ -55,3 +56,19 @@ class TestSaleRequirePODoc(BaseCommon):
 
         self.sale.action_confirm()
         self.assertEqual(self.sale.state, "sale")
+
+    def test_customer_need_po_default(self):
+        self.company.customer_need_po_default = True
+        partner = self.env["res.partner"].create(
+            {
+                "name": "Partner With PO Required",
+            }
+        )
+        self.assertTrue(partner.customer_need_po)
+        self.company.customer_need_po_default = False
+        partner = self.env["res.partner"].create(
+            {
+                "name": "Partner Without PO Required",
+            }
+        )
+        self.assertFalse(partner.customer_need_po)
